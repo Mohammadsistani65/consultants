@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>رزرو مشاوره آنلاین پوست و مو</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#1b3a6b;--gold:#c9a24b;--bg:#eef4fb;--card:#fff;--ink:#14213d;--line:#cfdcec}
+*{box-sizing:border-box}
+body{margin:0;font-family:Vazirmatn,Tahoma,sans-serif;background:linear-gradient(#e6f0fb,#f7fbff);color:var(--ink);min-height:100vh}
+.wrap{max-width:520px;margin:0 auto;padding:16px 14px 40px}
+h1{margin:6px 0 2px;font-size:22px;color:var(--navy);text-align:center}
+.sub{text-align:center;color:#55657f;font-size:13px;margin-bottom:12px}
+.badge{display:block;margin:0 auto 14px;width:fit-content;background:linear-gradient(90deg,#f3dc9b,#c9a24b);color:#3b2d06;padding:6px 16px;border-radius:20px;font-weight:600;font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 4px 14px rgba(27,58,107,.08)}
+.bar{background:var(--navy);color:#fff;border-radius:14px;padding:10px;text-align:center;font-weight:600;margin-bottom:14px;border:2px solid var(--gold)}
+label{display:block;font-weight:600;margin:12px 0 5px;font-size:14px}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;background:#f3f8fe;font:inherit;color:var(--ink)}
+.row{display:flex;gap:10px}.row>div{flex:1}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:9px 13px;border:1px solid var(--line);border-radius:12px;background:#f3f8fe;cursor:pointer;font-size:13px;user-select:none}
+.chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip.off{opacity:.35;pointer-events:none;text-decoration:line-through}
+button.main{width:100%;margin-top:18px;padding:13px;border:0;border-radius:14px;background:var(--navy);color:#fff;font:inherit;font-weight:800;font-size:16px;border-bottom:3px solid var(--gold);cursor:pointer}
+button.sm{padding:7px 12px;border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:10px;font:inherit;font-size:12px;cursor:pointer}
+button:disabled{opacity:.5}
+.link{direction:ltr;text-align:left;font-size:12px;word-break:break-all;background:#f3f8fe;padding:10px;border-radius:10px;border:1px dashed var(--navy)}
+.bk{border-top:1px solid var(--line);padding:10px 0;font-size:13px;line-height:1.9}
+.bk:first-child{border:0}
+.st{font-size:11px;padding:2px 8px;border-radius:8px;background:#fff3cf}.st.done{background:#d9f5e1}.st.cancelled{background:#fbdcdc}
+.err{color:#b3261e;font-size:13px;margin-top:8px}.ok{text-align:center;padding:20px 6px}
+.ok b{color:var(--navy);font-size:18px}
+.credit{text-align:center;font-size:11px;color:#7a8aa3;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+<script>
+// ====== تنظیمات Supabase (مقادیر خودتان را جایگزین کنید) ======
+const SB_URL = 'YOUR_SUPABASE_URL';
+const SB_KEY = 'YOUR_SUPABASE_ANON_KEY';
+// ================================================================
+const PROV=['آذربایجان شرقی','آذربایجان غربی','اردبیل','اصفهان','البرز','ایلام','بوشهر','تهران','چهارمحال و بختیاری','خراسان جنوبی','خراسان رضوی','خراسان شمالی','خوزستان','زنجان','سمنان','سیستان و بلوچستان','فارس','قزوین','قم','کردستان','کرمان','کرمانشاه','کهگیلویه و بویراحمد','گلستان','گیلان','لرستان','مازندران','مرکزی','هرمزگان','همدان','یزد'];
+const SKIN=['چرب','خشک','مختلط','نرمال','حساس','نمی‌دانم'];
+const SLOTS={'صبح':['09:00','09:30','10:00','10:30','11:00','11:30'],'عصر':['16:00','16:30','17:00','17:30','18:00','18:30','19:00']};
+const $=s=>document.querySelector(s), app=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fa=n=>String(n).replace(/\d/g,d=>'۰۱۲۳۴۵۶۷۸۹'[d]);
+const jd=iso=>new Intl.DateTimeFormat('fa-IR-u-ca-persian',{weekday:'long',day:'numeric',month:'long'}).format(new Date(iso+'T12:00:00'));
+const credit='<div class="credit">طراح: محمد سیستانی</div>';
+async function rpc(fn,args){
+  const r=await fetch(SB_URL+'/rest/v1/rpc/'+fn,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(args||{})});
+  if(!r.ok){const t=await r.text();throw new Error(t)}
+  const t=await r.text();return t?JSON.parse(t):null;
+}
+const slug=new URLSearchParams(location.search).get('a');
+slug?clientView():panelView();
+
+/* ---------------- فرم مراجع ---------------- */
+async function clientView(){
+  let name;
+  try{name=await rpc('cb_advisor_name',{p_slug:slug})}catch(e){}
+  if(!name){app.innerHTML='<div class="card ok">این لینک معتبر نیست.</div>'+credit;return}
+  const days=[...Array(14)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()+i+1);return d.toLocaleDateString('en-CA')});
+  const st={day:null,shift:null,slot:null,mode:null};
+  app.innerHTML=`<h1>مشاوره آنلاین (صوتی / تصویری)</h1>
+  <div class="sub">محصولات مراقبت از پوست و زیبایی</div>
+  <span class="badge">۳۰ دقیقه مشاوره رایگان</span>
+  <div class="card" style="text-align:center">با حضور مشاور مجرب<br><b style="font-size:20px;color:var(--navy)">${esc(name)}</b></div>
+  <div class="bar">فرم مشاوره و نوبت‌دهی</div>
+  <div class="card" id="f">
+   <label>نام و نام خانوادگی</label><input id="fn">
+   <label>شماره تماس</label><input id="ph" type="tel" inputmode="tel" style="direction:ltr;text-align:right">
+   <div class="row"><div><label>سن</label><input id="age" type="number" inputmode="numeric" min="5" max="99"></div>
+   <div><label>تیپ پوستی</label><select id="sk"><option value="">انتخاب کنید</option>${SKIN.map(s=>`<option>${s}</option>`).join('')}</select></div></div>
+   <label>عارضه ناراحت‌کننده</label><textarea id="cn" rows="2"></textarea>
+   <label>استان</label><select id="pv"><option value="">انتخاب کنید</option>${PROV.map(s=>`<option>${s}</option>`).join('')}</select>
+   <label>نوع مشاوره</label><div class="chips" id="md">${['صوتی','تصویری'].map(m=>`<div class="chip" data-v="${m}">${m}</div>`).join('')}</div>
+   <label>روز مشاوره</label><div class="chips" id="dy">${days.map(d=>`<div class="chip" data-v="${d}">${jd(d)}</div>`).join('')}</div>
+   <label>نوبت صبح یا عصر؟</label><div class="chips" id="sh"><div class="chip" data-v="صبح">صبح</div><div class="chip" data-v="عصر">عصر</div></div>
+   <div id="slw" style="display:none"><label>ساعت پیشنهادی</label><div class="chips" id="sl"></div></div>
+   <div class="err" id="er"></div>
+   <button class="main" id="go">نوبت خودت رو رزرو کن</button>
+  </div>
+  <div class="sub">پوست سالم، اعتماد به نفس بیشتر…</div>${credit}`;
+  const pick=(id,key,cb)=>$(id).addEventListener('click',e=>{const c=e.target.closest('.chip');if(!c)return;$(id).querySelectorAll('.chip').forEach(x=>x.classList.remove('on'));c.classList.add('on');st[key]=c.dataset.v;cb&&cb()});
+  async function slots(){
+    if(!st.day||!st.shift){$('#slw').style.display='none';return}
+    st.slot=null;$('#slw').style.display='block';
+    let taken=[];try{taken=await rpc('cb_taken_slots',{p_slug:slug,p_day:st.day})||[]}catch(e){}
+    $('#sl').innerHTML=SLOTS[st.shift].map(t=>`<div class="chip ${taken.includes(t)?'off':''}" data-v="${t}">${fa(t)}</div>`).join('');
+  }
+  pick('#md','mode');pick('#dy','day',slots);pick('#sh','shift',slots);pick('#sl','slot');
+  $('#go').onclick=async()=>{
+    const v={fn:$('#fn').value.trim(),ph:$('#ph').value.trim(),age:+$('#age').value,sk:$('#sk').value,cn:$('#cn').value.trim(),pv:$('#pv').value};
+    if(!v.fn||!v.ph||!v.age||!v.sk||!v.pv||!st.mode||!st.day||!st.shift||!st.slot){$('#er').textContent='لطفاً همه موارد را کامل کنید.';return}
+    $('#go').disabled=true;$('#er').textContent='';
+    try{
+      await rpc('cb_book',{p_slug:slug,p_name:v.fn,p_phone:v.ph,p_age:v.age,p_skin:v.sk,p_concern:v.cn,p_province:v.pv,p_mode:st.mode,p_day:st.day,p_shift:st.shift,p_slot:st.slot});
+      $('#f').innerHTML=`<div class="ok"><b>نوبت شما ثبت شد ✅</b><p>${esc(jd(st.day))} — ساعت ${fa(st.slot)}<br>مشاوره ${esc(st.mode)} با ${esc(name)}</p><p>مشاور برای هماهنگی با شما تماس می‌گیرد.</p></div>`;
+    }catch(e){
+      $('#er').textContent=/taken/.test(e.message)?'این ساعت همین الان رزرو شد؛ ساعت دیگری انتخاب کنید.':'خطا در ثبت نوبت، دوباره تلاش کنید.';
+      $('#go').disabled=false;slots();
+    }
+  };
+}
+
+/* ---------------- پنل مشاور ---------------- */
+function panelView(){
+  const s=JSON.parse(localStorage.getItem('adv')||'null');
+  s?dash(s):login();
+}
+function login(){
+  app.innerHTML=`<h1>پنل مشاوران</h1><div class="sub">با نام خود وارد شوید و لینک اختصاصی‌تان را بگیرید</div>
+  <div class="card"><label>نام و نام خانوادگی</label><input id="n">
+  <label>رمز ۴ رقمی (برای ورود دوباره و محافظت از نوبت‌ها)</label><input id="p" type="password" inputmode="numeric" maxlength="8" style="direction:ltr;text-align:right">
+  <div class="err" id="er"></div>
+  <button class="main" id="in">ورود / ساخت لینک من</button></div>${credit}`;
+  $('#in').onclick=async()=>{
+    const n=$('#n').value.trim(),p=$('#p').value.trim();
+    if(!n||p.length<4){$('#er').textContent='نام و رمز (حداقل ۴ رقم) را وارد کنید.';return}
+    $('#in').disabled=true;
+    try{
+      let r=await rpc('cb_login_advisor',{p_name:n,p_pin:p});
+      if(!r.length){
+        try{r=await rpc('cb_create_advisor',{p_name:n,p_pin:p})}
+        catch(e){$('#er').textContent='این نام قبلاً ثبت شده؛ رمز اشتباه است.';$('#in').disabled=false;return}
+      }
+      const s={id:r[0].id,slug:r[0].slug,name:n};localStorage.setItem('adv',JSON.stringify(s));dash(s);
+    }catch(e){$('#er').textContent='خطا در اتصال: '+String(e.message).slice(0,200);$('#in').disabled=false}
+  };
+}
+async function dash(s){
+  const url=location.origin+location.pathname+'?a='+s.slug;
+  app.innerHTML=`<h1>سلام ${esc(s.name)}</h1><div class="sub">لینک اختصاصی شما</div>
+  <div class="card"><div class="link">${esc(url)}</div>
+  <div class="row" style="margin-top:10px"><button class="sm" id="cp">کپی لینک</button><button class="sm" id="sh">ارسال</button><button class="sm" id="lo">خروج</button></div></div>
+  <div class="bar">نوبت‌های رزروشده</div><div class="card" id="bl">در حال بارگذاری…</div>${credit}`;
+  $('#cp').onclick=()=>{navigator.clipboard.writeText(url).then(()=>$('#cp').textContent='کپی شد ✓')};
+  $('#sh').onclick=()=>navigator.share?navigator.share({title:'رزرو مشاوره پوست و مو',text:'برای رزرو مشاوره رایگان از این لینک وارد شوید:',url}):$('#cp').click();
+  $('#lo').onclick=()=>{localStorage.removeItem('adv');login()};
+  async function load(){
+    let L=[];try{L=await rpc('cb_list_bookings',{p_id:s.id})||[]}catch(e){}
+    $('#bl').innerHTML=L.length?L.map(b=>`<div class="bk"><b>${esc(b.full_name)}</b> <span class="st ${b.status}">${{new:'جدید',done:'انجام شد',cancelled:'لغو'}[b.status]||b.status}</span><br>
+    ${esc(jd(b.day))} — ${fa(b.slot)} (${esc(b.shift)}) · ${esc(b.mode)}<br>
+    <a href="tel:${esc(b.phone)}">${esc(b.phone)}</a> · ${fa(b.age)} ساله · پوست ${esc(b.skin_type)} · ${esc(b.province)}<br>
+    ${b.concern?'عارضه: '+esc(b.concern)+'<br>':''}
+    <button class="sm" data-i="${b.id}" data-s="done">انجام شد</button> <button class="sm" data-i="${b.id}" data-s="cancelled">لغو</button></div>`).join(''):'هنوز نوبتی ثبت نشده.';
+    $('#bl').querySelectorAll('button[data-i]').forEach(x=>x.onclick=async()=>{await rpc('cb_set_status',{p_id:s.id,p_bid:x.dataset.i,p_status:x.dataset.s});load()});
+  }
+  load();
+}
+</script>
+</body>
+</html>
